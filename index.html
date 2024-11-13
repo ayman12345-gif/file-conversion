@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert file to any other file - File Conversions</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #34495e;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        #conclusion {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background: #f8f9fa;
+            display: none;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .loading::after {
+            content: "جاري التحويل...";
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: "جاري التحويل."; }
+            40% { content: "جاري التحويل.."; }
+            60% { content: "جاري التحويل..."; }
+            80%, 100% { content: "جاري التحويل...."; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>File Conversions</h1>
+        <form id="conversionForm">
+            <div class="form-group">
+                <label for="apiKey">API Key:</label>
+                <input type="password" id="apiKey" required placeholder="أدخل مفتاح API الخاص بك">
+            </div>
+
+            <div class="form-group">
+                <label for="file">الملف:</label>
+                <input type="file" id="file" required>
+            </div>
+
+            <div class="form-group">
+                <label for="conversionType">نوع التحويل:</label>
+                <select id="conversionType" required>
+                    <option value="">اختر نوع التحويل</option>
+                    <option value="pdf-to-word">من PDF إلى Word</option>
+                    <option value="word-to-pdf">من Word إلى PDF</option>
+                    <option value="word-to-powerpoint">من Word إلى PowerPoint</option>
+                    <option value="powerpoint-to-word">من PowerPoint إلى Word</option>
+                    <option value="word-to-excel">من Word إلى Excel</option>
+                    <option value="excel-to-word">من Excel إلى Word</option>
+                    <option value="powerpoint-to-pdf">من PowerPoint إلى PDF</option>
+                    <option value="pdf-to-powerpoint">من PDF إلى PowerPoint</option>
+                    <option value="excel-to-powerpoint">من Excel إلى PowerPoint</option>
+                    <option value="powerpoint-to-excel">من PowerPoint إلى Excel</option>
+                    <option value="html-to-jpg">من HTML إلى JPG</option>
+                    <option value="markdown-to-pdf">من Markdown إلى PDF</option>
+                    <option value="markdown-to-jpg">من Markdown إلى JPG</option>
+                </select>
+            </div>
+
+            <button type="submit">تحويل الملف</button>
+            
+            <div class="loading" id="loading"></div>
+            
+            <div id="conclusion"></div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('conversionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const apiKey = document.getElementById('apiKey').value;
+            const file = document.getElementById('file').files[0];
+            const conversionType = document.getElementById('conversionType').value;
+            const loading = document.getElementById('loading');
+            const conclusion = document.getElementById('conclusion');
+            
+            // التحقق من المدخلات
+            if (!apiKey || !file || !conversionType) {
+                showError('يرجى ملء جميع الحقول المطلوبة');
+                return;
+            }
+
+            // إظهار حالة التحميل
+            loading.style.display = 'block';
+            conclusion.style.display = 'none';
+
+            try {
+                // تحويل الملف إلى Base64
+                const base64File = await fileToBase64(file);
+                
+                // إعداد طلب API
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.1-70b-versatile',
+                        messages: [
+                            {
+                                role: 'user',
+                                content: `Convert this file from ${conversionType.split('-')[0]} to ${conversionType.split('-')[2]}. File content: ${base64File}`
+                            }
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // إنشاء رابط تحميل للملف المحول
+                const blob = base64ToBlob(data.choices[0].message.content);
+                const downloadUrl = URL.createObjectURL(blob);
+                
+                // عرض زر التحميل
+                conclusion.style.display = 'block';
+                conclusion.innerHTML = `
+                    <div class="success">
+                        تم تحويل الملف بنجاح! 
+                        <a href="${downloadUrl}" download="converted_file">اضغط هنا لتحميل الملف المحول</a>
+                    </div>
+                `;
+                
+            } catch (error) {
+                showError('حدث خطأ أثناء تحويل الملف. يرجى المحاولة مرة أخرى.');
+                console.error('Error:', error);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        function showError(message) {
+            const conclusion = document.getElementById('conclusion');
+            conclusion.style.display = 'block';
+            conclusion.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        function base64ToBlob(base64) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray]);
+        }
+    </script>
+</body>
+</html>
